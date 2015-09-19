@@ -443,6 +443,15 @@ var
   sSendCmdHead,sSendCmd:string;
   adotemp11:tadoquery;
   sYXJB:string;
+
+  OrderInfoHeader:string;
+  RackNumber,SampleIDNumber,PatientName:integer;
+  rSampleIDNumber:string;
+  sList:TStrings;
+  pList:pchar;
+  j:integer;
+  AnalysisParamData:string;
+  OrderInfoSend:string;
 begin
   //20100602发现,传过来的数据有可能#$2#$2'D...',故要TrimLeft
   
@@ -456,6 +465,41 @@ begin
 
   if copy(str,1,1)='R' THEN//AU->HOST 查询
   BEGIN
+    exit;
+    OrderInfoHeader:=STX;
+    OrderInfoHeader:=OrderInfoHeader+'S';
+    OrderInfoHeader:=OrderInfoHeader+copy(Str,3,7);
+    OrderInfoHeader:=OrderInfoHeader+'U';
+    OrderInfoHeader:=OrderInfoHeader+copy(Str,11,10+RackNumber+2+SampleIDNumber+1+PatientName);
+    
+    rSampleIDNumber:=trim(copy(Str,20+RackNumber+2+1,SampleIDNumber));
+
+    //根据条码获取病人联机标识列表
+    pList:=GetEquipIdList(pchar(ConnectString),pchar(rSampleIDNumber),pchar(EquipChar));
+    sList:=TStringList.Create;
+    ExtractStrings([#2],[],pList,sList);
+    for j :=0  to sList.Count-1 do
+    begin
+      AnalysisParamData:=AnalysisParamData+rightstr(StringOfChar(#$20,3)+sList[j],3)+StringOfChar(#$20,6);//#$20#$20#$20#$20#$20#$20;
+    end;
+    sList.Free;
+
+    //exit;
+    //if not GetEquipIdList(pchar(ConnectString),pchar(rSampleIDNumber),pchar(EquipChar),aryEquipId) then
+    //begin
+    //  if length(memo1.Lines.Text)>=60000 then memo1.Lines.Clear;//memo只能接受64K个字符
+    //  memo1.Lines.Add('条码号:'+rSampleIDNumber+',联机字母:'+EquipChar+',获取病人联机标识列表失败');
+    //  exit;
+    //end;
+
+    OrderInfoSend:=OrderInfoHeader{+rPatientName}+AnalysisParamData+ETX;
+    if ComPort1.WriteStr(OrderInfoSend)<=0 then
+    begin
+      if length(memo1.Lines.Text)>=60000 then memo1.Lines.Clear;//memo只能接受64K个字符
+      memo1.Lines.Add('向仪器发送指令失败:'+OrderInfoSend);
+    end;
+
+    
     exit;
     sSendCmdHead:=copy(str,1,34);//34待定
     //通过样本号找优先级别:常规、急诊等
