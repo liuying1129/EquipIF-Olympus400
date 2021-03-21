@@ -99,6 +99,7 @@ var
   hnd:integer;
   bRegister:boolean;
   ItemIdStart:integer;//项目号开始的位置。正常、重做的位置不同
+  ShowIDLen:integer;//联机标识字符串长度。AU400、AU640为2,AU680为3;
 
 {$R *.dfm}
 
@@ -255,6 +256,7 @@ begin
                                                     
   LisFormCaption:=ini.ReadString(IniSection,'检验系统窗体标题','');
   ItemIdStart:=ini.ReadInteger(IniSection,'项目号开始位置',46);
+  ShowIDLen:=ini.ReadInteger(IniSection,'联机标识长度',2);
   EquipUnid:=ini.ReadInteger(IniSection,'设备唯一编号',-1);
 
   QuaContSpecNoG:=ini.ReadString(IniSection,'高值质控联机号','9999');
@@ -388,6 +390,7 @@ begin
       '调试日志'+#2+'CheckListBox'+#2+#2+'0'+#2+'注:强烈建议在正常运行时关闭'+#2+#3+
       '联机标识P改5'+#2+'CheckListBox'+#2+#2+'1'+#2+#2+#3+
       '优先级别'+#2+'Combobox'+#2+'自动'+#13+'常规'+#2+'0'+#2+'自动:根据仪器取值;其他:取设置值'+#2+#3+
+      '联机标识长度'+#2+'Edit'+#2+#2+'1'+#2+'注:默认值2.通常情况,AU400、AU640为2,AU680为3'+#2+#3+
       '设备唯一编号'+#2+'Edit'+#2+#2+'1'+#2+#2+#3+
       '高值质控联机号'+#2+'Edit'+#2+#2+'2'+#2+#2+#3+
       '常值质控联机号'+#2+'Edit'+#2+#2+'2'+#2+#2+#3+
@@ -439,7 +442,6 @@ procedure TfrmMain.ComDataPacket1Packet(Sender: TObject;
   const Str: String);
 const
   ItemValuLen=6;
-  showIDLen=2;
 var
   SpecNo:string;
   sValue:string;
@@ -557,12 +559,12 @@ begin
     
     //if copy(str,3,1)='H' then ItemIdStart:=40;//重做。40待定
 
-    ReceiveItemInfo:=VarArrayCreate([0,((length(TrimLeft(Str))-ItemIdStart+1+1) div 10)-1],varVariant);
+    ReceiveItemInfo:=VarArrayCreate([0,((length(TrimLeft(Str))-ItemIdStart+1+1) div (showIDLen+ItemValuLen+2))-1],varVariant);
     i:=0;
-    while length(copy(TrimLeft(Str),ItemIdStart-1+(i*10),MaxInt))>=10 do
+    while length(copy(TrimLeft(Str),ItemIdStart-1+(i*(showIDLen+ItemValuLen+2)),MaxInt))>=(showIDLen+ItemValuLen+2) do
     begin
-      sValue:=trim(copy(TrimLeft(Str),ItemIdStart-1+(i*10)+showIDLen,ItemValuLen));
-      showid:=trim(copy(TrimLeft(Str),ItemIdStart-1+(i*10),2));
+      sValue:=trim(copy(TrimLeft(Str),ItemIdStart-1+(i*(showIDLen+ItemValuLen+2))+showIDLen,ItemValuLen));
+      showid:=trim(copy(TrimLeft(Str),ItemIdStart-1+(i*(showIDLen+ItemValuLen+2)),showIDLen));
       ReceiveItemInfo[i]:=VarArrayof([showid,sValue,'','']);
       inc(i);
     end;
